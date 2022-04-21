@@ -53,3 +53,4 @@
 ## Software and installation
 
 - [A. MicroPython version](./src/MicroPython/README.md)
+- [B. C++ version](./src/cpp/README.md)
