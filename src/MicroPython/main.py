@@ -144,7 +144,7 @@ def loop():
         chrg, v, p = battery_status()
         debug("Charging: {}, voltage: {:.2f}V, percentage: {:.0f}%".format(chrg, v, p))
 
-        if p <= BATTERY_LOW_WARNING_PERCENT:
+        if not chrg and p <= BATTERY_LOW_WARNING_PERCENT:
             debug("Battery level low!")
             BUZZER.beep_boop(2, False)
             time.sleep(2.0)

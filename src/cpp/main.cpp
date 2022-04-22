@@ -480,7 +480,7 @@ void loop()
         battery_status(&charging, &voltage, &percentage);
         printf("Charging: %d, voltage: %.2f V, percentage: %.0f %%\n", charging, voltage, percentage);
 
-        if (percentage <= BATTERY_LOW_WARNING_PERCENT)
+        if (!charging && percentage <= BATTERY_LOW_WARNING_PERCENT)
         {
             printf("Battery level low!\n");
             buzzer.beep_boop(2, false);
