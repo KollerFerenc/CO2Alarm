@@ -523,7 +523,6 @@ void loop()
             }
             else
             {
-                buzzer.beep_boop(1, false);
                 printf("CO2: %u, Temp.: %ldC, Humi.: %ld mRH\n", co2, temperature, humidity);
                 measured = true;
 
