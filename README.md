@@ -7,6 +7,7 @@
   - [LiPo SHIM for Pico](#lipo-shim-for-pico)
   - [Buzzer](#buzzer)
   - [SCD41 CO2 Sensor](#scd41-co2-sensor)
+  - [Diagram](#diagram)
 - [Software and installation](#software-and-installation)
 
 ## Hardware Requirements
@@ -49,6 +50,17 @@
 - SCL -> GPIO 5 (pin 7)
 - GND -> GND (pin 8)
   - NOTE: any GND pin is okay
+
+### Diagram
+
+<figure>
+    <img src="./assets/diagram.png" width="650" height="473"
+         alt="Wiring diagram.">
+    <figcaption>Wiring diagram.</figcaption>
+</figure>
+
+- Sensor shown on the diagram is made by Adafruit and is only a reference. (Couldn't find a model made by Pimoroni.)
+  - [Adafruit SCD-41](https://www.adafruit.com/product/5190)
 
 ## Software and installation
 
