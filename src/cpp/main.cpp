@@ -400,6 +400,12 @@ void scd41_reinit(bool sleep)
     }
 }
 
+void scd41_power_down()
+{
+    scd4x_stop_periodic_measurement();
+    scd4x_power_down();
+}
+
 // Setup before main loop
 void setup()
 {
@@ -517,6 +523,7 @@ void loop()
             }
             else
             {
+                buzzer.beep_boop(1, false);
                 printf("CO2: %u, Temp.: %ldC, Humi.: %ld mRH\n", co2, temperature, humidity);
                 measured = true;
 
@@ -570,7 +577,7 @@ void loop()
                     }
 
                     printf("fm rtc_sleep start. (%dmin %dsec)\n", min, sec);
-                    scd4x_stop_periodic_measurement();
+                    scd41_power_down();
                     stopped = true;
                     rtc_sleep(min, sec); 
                 }
@@ -579,7 +586,7 @@ void loop()
                     int8_t min = MEASURE_INTERVAL_MINUTES;
                     int8_t sec = 10;
                     printf("rtc_sleep start. (%dmin %dsec)\n", min, sec);
-                    scd4x_stop_periodic_measurement();
+                    scd41_power_down();
                     stopped = true;
                     rtc_sleep(min, sec);
                 }
@@ -597,7 +604,7 @@ void loop()
                 }
 
                 printf("rtc_sleep start. (%dmin %dsec)\n", min, sec);
-                scd4x_stop_periodic_measurement();
+                scd41_power_down();
                 stopped = true;
                 rtc_sleep(min, sec);
             }

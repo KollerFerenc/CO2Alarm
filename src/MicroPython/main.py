@@ -135,8 +135,12 @@ def setup():
 def loop():
     firstmeasure = CHECK_FOR_FIRST_MEASURE
     measured = False
+    stopped = False
     co2_high_count = 0
     while True:
+        if stopped:
+            breakout_scd41.start()
+
         chrg, v, p = battery_status()
         debug("Charging: {}, voltage: {:.2f}V, percentage: {:.0f}%".format(chrg, v, p))
 
@@ -191,10 +195,13 @@ def loop():
                         MEASURE_INTERVAL_MINUTES * 60
                     ) // MEASURE_HIGH_NOTICE_SLEEP_FACTOR
                     debug("fm lightsleep start. ({}s)".format(sleep_time))
+                    breakout_scd41.stop()
+                    stopped = True
                     machine.lightsleep(sleep_time * 1000)
                 else:
                     debug("deepsleep start. ({}s)".format(sleep_time))
                     breakout_scd41.stop()
+                    stopped = True
                     machine.deepsleep(sleep_time * 1000)
             else:
                 co2_high_count = co2_high_count - 1
@@ -202,6 +209,8 @@ def loop():
                     MEASURE_INTERVAL_MINUTES * 60
                 ) // MEASURE_HIGH_NOTICE_SLEEP_FACTOR
                 debug("lightsleep start. ({}s)".format(sleep_time))
+                breakout_scd41.stop()
+                stopped = True
                 machine.lightsleep(sleep_time * 1000)
 
         else:
