@@ -73,6 +73,14 @@ const float EMPTY_BATTERY_VOLTAGE = 2.8f; // these are our reference voltages fo
 const uint32_t DEFAULT_SLEEP_TIME_MS = 5000;
 
 // ############################################################
+// Version
+// ############################################################
+
+static const unsigned VERSION_MAJOR = 1;
+static const unsigned VERSION_MINOR = 0;
+static const unsigned VERSION_REVISION = 0;
+
+// ############################################################
 // Classes
 // ############################################################
 
