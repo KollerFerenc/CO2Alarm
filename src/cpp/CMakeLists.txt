@@ -22,6 +22,11 @@ target_link_libraries(${OUTPUT_NAME}
     hardware_rosc
 )
 
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message(STATUS ${CMAKE_BUILD_TYPE})
+    add_definitions(-DDEBUG)
+endif()
+
 # create map/bin/hex file etc.
 pico_add_extra_outputs(${OUTPUT_NAME})
 

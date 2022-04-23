@@ -78,7 +78,7 @@ const uint32_t DEFAULT_SLEEP_TIME_MS = 5000;
 
 static const unsigned VERSION_MAJOR = 1;
 static const unsigned VERSION_MINOR = 0;
-static const unsigned VERSION_REVISION = 0;
+static const unsigned VERSION_REVISION = 1;
 
 // ############################################################
 // Classes
@@ -248,7 +248,9 @@ class PiezoBuzzer
 // Global variables
 // ############################################################
 
-#if defined(BUZZER_TYPE_BUZZER3V5V)
+#if defined(BUZZER_TYPE_BUZZER3V5V) and defined(BUZZER_TYPE_PIEZO)
+#warning Multiple buzzer type selected!
+#elif defined(BUZZER_TYPE_BUZZER3V5V)
 Buzzer3v5v buzzer(BUZZER_PIN); 
 #elif defined(BUZZER_TYPE_PIEZO)
 PiezoBuzzer buzzer(BUZZER_PIN); 
@@ -289,9 +291,9 @@ static void sleep_callback(void)
     uart_default_tx_wait_blocking();
     recover_from_sleep(scb_orig, clock0_orig, clock1_orig);
     awake = true;
-
+#ifdef DEBUG
     printf("awake\n");
-
+#endif
     return;
 }
 
@@ -322,7 +324,9 @@ static void rtc_sleep(int8_t minutes, int8_t seconds)
     rtc_set_datetime(&t);
 
     awake = false;
+#ifdef DEBUG
     printf("rtc sleep start...\n");
+#endif
     uart_default_tx_wait_blocking();
     sleep_goto_sleep_until(&t_alarm, &sleep_callback);
 }
@@ -410,6 +414,9 @@ void scd41_reinit(bool sleep)
 
 void scd41_power_down()
 {
+#ifdef DEBUG
+    printf("Powering down scd41.\n");
+#endif
     scd4x_stop_periodic_measurement();
     scd4x_power_down();
 }
@@ -442,7 +449,9 @@ void setup()
     adc_select_input(3);
 
     // --- SCD41 ---
+#ifdef DEBUG
     printf("scd41 init and start...\n");
+#endif
     sensirion_i2c_hal_init(&i2c);
     scd41_reinit(true);
 
@@ -455,12 +464,14 @@ void setup()
     {
         printf("Error executing scd4x_get_serial_number(): %i\n", error);
     }
+#ifdef DEBUG
     else 
     {
         printf("Serial: 0x%04x%04x%04x\n", serial_0, serial_1, serial_2);
     }
 
     printf("scd41 init and start done.\n");
+#endif
     turn_off_led();
 }
 
@@ -486,17 +497,23 @@ void loop()
         float voltage;
         float percentage;
         battery_status(&charging, &voltage, &percentage);
+#ifdef DEBUG
         printf("Charging: %d, voltage: %.2f V, percentage: %.0f %%\n", charging, voltage, percentage);
+#endif
 
         if (!charging && percentage <= BATTERY_LOW_WARNING_PERCENT)
         {
+#ifdef DEBUG
             printf("Battery level low!\n");
+#endif
             buzzer.beep_boop(2, false);
             sleep_ms(2000);
             buzzer.beep_boop(2, false);
         }
         
+#ifdef DEBUG
         printf("Trying to measure...\n");
+#endif
         bool co2_high = false;
 
         sleep_ms(DEFAULT_SLEEP_TIME_MS);
@@ -511,7 +528,9 @@ void loop()
         else
         {
             ready = true;
+#ifdef DEBUG
             printf("data ready: %d\n", dr);
+#endif
         }
 
         if (ready)
@@ -536,18 +555,24 @@ void loop()
 
                 if (co2 <= CO2_LEVEL_NORMAL_UPPER)
                 {
+#ifdef DEBUG
                     printf("co2 level good.\n");
+#endif
                 }
                 else if (co2 <= CO2_LEVEL_HIGH_UPPER)
                 {
+#ifdef DEBUG
                     printf("co2 level high.\n");
+#endif
                     co2_high = true;
                     co2_high_count++;
                     buzzer.beep_boop(5, false);
                 }
                 else
                 {
+#ifdef DEBUG
                     printf("co2 level danger.\n");
+#endif
                     co2_high = true;
                     co2_high_count++;
                     buzzer.beep_boop(30, true);
@@ -556,7 +581,9 @@ void loop()
         }
         else
         {
+#ifdef DEBUG
             printf("SCD41 not ready: %i\n", error);
+#endif
             measured = false;
             blink_led(2);
         }
@@ -565,7 +592,9 @@ void loop()
         if (measured)
         {
             measured = false;
+#ifdef DEBUG
             printf("co2 high: %d, High count: %d\n", co2_high, co2_high_count);
+#endif
 
             if (!co2_high && co2_high_count < 1)
             {
@@ -583,7 +612,9 @@ void loop()
                         sec = (MEASURE_INTERVAL_MINUTES * 60) / MEASURE_HIGH_NOTICE_SLEEP_FACTOR;
                     }
 
+#ifdef DEBUG
                     printf("fm rtc_sleep start. (%dmin %dsec)\n", min, sec);
+#endif
                     scd41_power_down();
                     stopped = true;
                     rtc_sleep(min, sec); 
@@ -592,7 +623,9 @@ void loop()
                 {
                     int8_t min = MEASURE_INTERVAL_MINUTES;
                     int8_t sec = 10;
+#ifdef DEBUG
                     printf("rtc_sleep start. (%dmin %dsec)\n", min, sec);
+#endif
                     scd41_power_down();
                     stopped = true;
                     rtc_sleep(min, sec);
@@ -610,7 +643,9 @@ void loop()
                     sec = (MEASURE_INTERVAL_MINUTES * 60) / MEASURE_HIGH_NOTICE_SLEEP_FACTOR;
                 }
 
+#ifdef DEBUG
                 printf("rtc_sleep start. (%dmin %dsec)\n", min, sec);
+#endif
                 scd41_power_down();
                 stopped = true;
                 rtc_sleep(min, sec);
@@ -618,7 +653,9 @@ void loop()
         }
         else
         {
+#ifdef DEBUG
             printf("No measurement, sleep and retry.\n");
+#endif
             sleep_ms(DEFAULT_SLEEP_TIME_MS);
         }
     }
