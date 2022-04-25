@@ -379,13 +379,31 @@ void battery_status(bool *charging, float *voltage, float *percentage)
     }
 }
 
-void scd41_reinit(bool sleep)
+void scd41_reinit()
 {
+#ifdef DEBUG
+    printf("scd41 wake up and init.\n");
+#endif
+
+    int16_t error;
     scd4x_wake_up();
     scd4x_stop_periodic_measurement();
-    scd4x_reinit();
+    error = scd4x_reinit();
+    if (error)
+    {
+        printf("Error executing scd4x_reinit(): %i\n", error);
+    }
+}
 
-    int16_t error; 
+void scd41_start_measurement(bool sleep)
+{
+    scd41_reinit();
+
+#ifdef DEBUG
+    printf("scd41 start measurement.\n");
+#endif
+
+    int16_t error;
     uint32_t sleep_time;
     if ((MEASURE_INTERVAL_MINUTES * 60) / MEASURE_HIGH_NOTICE_SLEEP_FACTOR < 60)
     {
@@ -421,6 +439,34 @@ void scd41_power_down()
     scd4x_power_down();
 }
 
+void scd41_self_test()
+{
+    scd41_reinit();
+
+#ifdef DEBUG
+    printf("Running scd41 selftest.\n");
+#endif
+
+    uint16_t sensor_status;
+    int16_t error;
+    error = scd4x_perform_self_test(&sensor_status);
+    if (error)
+    {
+        printf("Error executing scd4x_perform_self_test(): %i\n", error);
+    }
+    else if (sensor_status)
+    {
+        printf("Malfunction detected: %i\n", sensor_status);
+        buzzer.beep_boop(10, false);
+    }
+#ifdef DEBUG
+    else
+    {
+        printf("No malfunction detected.\n");
+    }
+#endif
+}
+
 // Setup before main loop
 void setup()
 {
@@ -449,11 +495,10 @@ void setup()
     adc_select_input(3);
 
     // --- SCD41 ---
-#ifdef DEBUG
-    printf("scd41 init and start...\n");
-#endif
     sensirion_i2c_hal_init(&i2c);
-    scd41_reinit(true);
+    scd41_reinit();
+    scd41_self_test();
+    scd41_start_measurement(true);
 
     int16_t error;
     uint16_t serial_0;
@@ -469,8 +514,6 @@ void setup()
     {
         printf("Serial: 0x%04x%04x%04x\n", serial_0, serial_1, serial_2);
     }
-
-    printf("scd41 init and start done.\n");
 #endif
     turn_off_led();
 }
@@ -489,7 +532,8 @@ void loop()
         uart_default_tx_wait_blocking();
         if (stopped)
         {
-            scd41_reinit(true);
+            scd41_reinit();
+            scd41_start_measurement(true);
             stopped = false;
         }
 
