@@ -30,6 +30,6 @@ endif()
 # create map/bin/hex file etc.
 pico_add_extra_outputs(${OUTPUT_NAME})
 
-# enable usb output, enable uart output
-pico_enable_stdio_usb(${OUTPUT_NAME} 1)
-pico_enable_stdio_uart(${OUTPUT_NAME} 1)
+# Commented out because with it the Pico would hang after a few RTC sleep cicles
+# pico_enable_stdio_usb(${OUTPUT_NAME} 1)
+# pico_enable_stdio_uart(${OUTPUT_NAME} 1)
