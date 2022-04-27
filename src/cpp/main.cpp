@@ -2,7 +2,7 @@
 // Libraries
 // ############################################################
 
-#include <stdio.h>  // printf
+#include <stdio.h> // printf
 
 #include "scd4x_i2c.h"
 #include "sensirion_common.h"
@@ -41,12 +41,12 @@ const uint BUZZER_PIN = 15; // GPIO pin number on the Pico
 // #define BUZZER_TYPE_PIEZO
 
 // --- Measurement timings ---
-const int8_t MEASURE_INTERVAL_MINUTES = 5; // co2 measurement interval in minutes
+const int8_t MEASURE_INTERVAL_MINUTES = 5;         // co2 measurement interval in minutes
 const int8_t MEASURE_HIGH_NOTICE_SLEEP_FACTOR = 5; // when high co2 is detected, sleep for this fraction of measurement interval
 
 // --- CO2 levels ---
 const uint16_t CO2_LEVEL_NORMAL_UPPER = 1500; // co2 level: normal upper threshold in ppm
-const uint16_t CO2_LEVEL_HIGH_UPPER = 2500; // co2 level: high upper threshold in ppm. Anything higher is considered dangerous!
+const uint16_t CO2_LEVEL_HIGH_UPPER = 2500;   // co2 level: high upper threshold in ppm. Anything higher is considered dangerous!
 
 // --- Battery level ---
 const float BATTERY_LOW_WARNING_PERCENT = 15.0f; // battery low warning percent
@@ -68,7 +68,7 @@ const uint VSYS_PIN = 29;
 const uint CHARGING_PIN = 24;
 
 const float BATTERY_CONVERSION_FACTOR = 3.0f * 3.3f / (1 << 12);
-const float FULL_BATTERY_VOLTAGE = 4.2f; // these are our reference voltages for a full/empty battery, in volts; the values could vary by battery size/manufacturer so you might need to adjust them.
+const float FULL_BATTERY_VOLTAGE = 4.2f;  // these are our reference voltages for a full/empty battery, in volts; the values could vary by battery size/manufacturer so you might need to adjust them.
 const float EMPTY_BATTERY_VOLTAGE = 2.8f; // these are our reference voltages for a full/empty battery, in volts; the values could vary by battery size/manufacturer so you might need to adjust them.
 const uint32_t DEFAULT_SLEEP_TIME_MS = 5000;
 
@@ -86,162 +86,162 @@ static const unsigned VERSION_REVISION = 0;
 
 class Buzzer3v5v
 {
-    private:
-        uint32_t _tone_gap_ms;
-        uint _buzzer_pin;
+private:
+    uint32_t _tone_gap_ms;
+    uint _buzzer_pin;
 
-    public:
-        Buzzer3v5v(uint pin_number)
-        {
-            _tone_gap_ms = 300; 
-            _buzzer_pin = pin_number;
-            gpio_init(_buzzer_pin);
-            gpio_set_dir(_buzzer_pin, GPIO_OUT);
-        }
+public:
+    Buzzer3v5v(uint pin_number)
+    {
+        _tone_gap_ms = 300;
+        _buzzer_pin = pin_number;
+        gpio_init(_buzzer_pin);
+        gpio_set_dir(_buzzer_pin, GPIO_OUT);
+    }
 
-        uint32_t get_tone_gap_ms()
-        {
-            return _tone_gap_ms;
-        }
+    uint32_t get_tone_gap_ms()
+    {
+        return _tone_gap_ms;
+    }
 
-        void set_tone_gap_ms(uint32_t ms)
-        {
-            _tone_gap_ms = ms;
-        }
+    void set_tone_gap_ms(uint32_t ms)
+    {
+        _tone_gap_ms = ms;
+    }
 
-        void be_quiet()
-        {
-            gpio_put(_buzzer_pin, 0);
-        }
+    void be_quiet()
+    {
+        gpio_put(_buzzer_pin, 0);
+    }
 
-        void beep()
-        {
-            gpio_put(_buzzer_pin, 1);
-        }
+    void beep()
+    {
+        gpio_put(_buzzer_pin, 1);
+    }
 
-        void beep_boop(uint times, bool cont)
+    void beep_boop(uint times, bool cont)
+    {
+        if (cont)
         {
-            if(cont)
+            beep();
+            for (uint i = 0; i < times; i++)
             {
-                beep();
-                for (uint i = 0; i < times; i++)
-                {
-                    sleep_ms(_tone_gap_ms);
-                }
-                
-                be_quiet();
-            }
-            else
-            {
-                for (uint i = 0; i < times; i++)
-                {
-                    beep();
-                    sleep_ms(_tone_gap_ms);
-                    be_quiet();
-                    sleep_ms(_tone_gap_ms);
-                }
+                sleep_ms(_tone_gap_ms);
             }
 
             be_quiet();
         }
+        else
+        {
+            for (uint i = 0; i < times; i++)
+            {
+                beep();
+                sleep_ms(_tone_gap_ms);
+                be_quiet();
+                sleep_ms(_tone_gap_ms);
+            }
+        }
+
+        be_quiet();
+    }
 };
 
 class PiezoBuzzer
 {
-    private:
-        uint32_t _tone_gap_ms;
-        uint _buzzer_pin;
-        int _duty_cicle;
-        uint _slice_number;
-        uint _channel;
+private:
+    uint32_t _tone_gap_ms;
+    uint _buzzer_pin;
+    int _duty_cicle;
+    uint _slice_number;
+    uint _channel;
 
-        uint32_t pwm_set_freq_duty(uint slice_number, uint channel, uint32_t frequency, int duty)
+    uint32_t pwm_set_freq_duty(uint slice_number, uint channel, uint32_t frequency, int duty)
+    {
+        uint32_t clock = 125000000;
+        uint32_t divider16 = clock / frequency / 4096 + (clock % (frequency * 4096) != 0);
+
+        if (divider16 / 16 == 0)
         {
-            uint32_t clock = 125000000;
-            uint32_t divider16 = clock / frequency / 4096 + (clock % (frequency * 4096) != 0);
+            divider16 = 16;
+        }
 
-            if (divider16 / 16 == 0)
+        uint32_t wrap = clock * 16 / divider16 / frequency - 1;
+        pwm_set_clkdiv_int_frac(slice_number, divider16 / 16, divider16 & 0xF);
+        pwm_set_wrap(slice_number, wrap);
+        pwm_set_chan_level(slice_number, channel, wrap * duty / 100);
+        return wrap;
+    }
+
+public:
+    PiezoBuzzer(uint pin_number)
+    {
+        _tone_gap_ms = 300;
+        _buzzer_pin = pin_number;
+        _duty_cicle = 5000;
+
+        gpio_set_function(_buzzer_pin, GPIO_FUNC_PWM);
+        _slice_number = pwm_gpio_to_slice_num(_buzzer_pin);
+        _channel = pwm_gpio_to_channel(_buzzer_pin);
+
+        be_quiet();
+    }
+
+    uint32_t get_tone_gap_ms()
+    {
+        return _tone_gap_ms;
+    }
+
+    void set_tone_gap_ms(uint32_t ms)
+    {
+        _tone_gap_ms = ms;
+    }
+
+    int get_duty_cicle()
+    {
+        return _duty_cicle;
+    }
+
+    void set_duty_cicle(int duty_cicle)
+    {
+        _duty_cicle = duty_cicle;
+    }
+
+    void play_tone(uint32_t frequency)
+    {
+        pwm_set_freq_duty(_slice_number, _channel, frequency, _duty_cicle);
+        pwm_set_enabled(_slice_number, true);
+    }
+
+    void be_quiet()
+    {
+        pwm_set_enabled(_slice_number, false);
+    }
+
+    void beep_boop(uint times, bool cont, uint32_t frequency = 2000)
+    {
+        if (cont)
+        {
+            play_tone(frequency);
+            for (uint i = 0; i < times; i++)
             {
-                divider16 = 16;
+                sleep_ms(_tone_gap_ms);
             }
 
-            uint32_t wrap = clock * 16 / divider16 / frequency - 1;
-            pwm_set_clkdiv_int_frac(slice_number, divider16/16, divider16 & 0xF);
-            pwm_set_wrap(slice_number, wrap);
-            pwm_set_chan_level(slice_number, channel, wrap * duty / 100);
-            return wrap;
-        }
-
-    public:
-        PiezoBuzzer(uint pin_number)
-        {
-            _tone_gap_ms = 300;
-            _buzzer_pin = pin_number;
-            _duty_cicle = 5000;
-            
-            gpio_set_function(_buzzer_pin, GPIO_FUNC_PWM);
-            _slice_number = pwm_gpio_to_slice_num(_buzzer_pin);
-            _channel = pwm_gpio_to_channel(_buzzer_pin);
-            
             be_quiet();
         }
-
-        uint32_t get_tone_gap_ms()
+        else
         {
-            return _tone_gap_ms;
-        }
-
-        void set_tone_gap_ms(uint32_t ms)
-        {
-            _tone_gap_ms = ms;
-        }
-
-        int get_duty_cicle()
-        {
-            return _duty_cicle;
-        }
-
-        void set_duty_cicle(int duty_cicle)
-        {
-            _duty_cicle = duty_cicle;
-        }
-
-        void play_tone(uint32_t frequency)
-        {
-            pwm_set_freq_duty(_slice_number, _channel, frequency, _duty_cicle);
-            pwm_set_enabled(_slice_number, true);
-        }
-
-        void be_quiet()
-        {
-            pwm_set_enabled(_slice_number, false);
-        }
-
-        void beep_boop(uint times, bool cont, uint32_t frequency = 2000)
-        {
-            if(cont)
+            for (uint i = 0; i < times; i++)
             {
                 play_tone(frequency);
-                for (uint i = 0; i < times; i++)
-                {
-                    sleep_ms(_tone_gap_ms);
-                }
-                
+                sleep_ms(_tone_gap_ms);
                 be_quiet();
+                sleep_ms(_tone_gap_ms);
             }
-            else
-            {
-                for (uint i = 0; i < times; i++)
-                {
-                    play_tone(frequency);
-                    sleep_ms(_tone_gap_ms);
-                    be_quiet();
-                    sleep_ms(_tone_gap_ms);
-                }
-            }
-
-            be_quiet();
         }
+
+        be_quiet();
+    }
 };
 
 // ############################################################
@@ -251,9 +251,9 @@ class PiezoBuzzer
 #if defined(BUZZER_TYPE_BUZZER3V5V) and defined(BUZZER_TYPE_PIEZO)
 #warning Multiple buzzer type selected!
 #elif defined(BUZZER_TYPE_BUZZER3V5V)
-Buzzer3v5v buzzer(BUZZER_PIN); 
+Buzzer3v5v buzzer(BUZZER_PIN);
 #elif defined(BUZZER_TYPE_PIEZO)
-PiezoBuzzer buzzer(BUZZER_PIN); 
+PiezoBuzzer buzzer(BUZZER_PIN);
 #else
 #warning Buzzer selection mandatory!
 #endif
@@ -280,10 +280,10 @@ uint ints_orig;
 
 void recover_from_sleep()
 {
-    //Re-enable ring Oscillator control
+    // Re-enable ring Oscillator control
     rosc_write(&rosc_hw->ctrl, ROSC_CTRL_ENABLE_BITS);
 
-    //reset procs back to default
+    // reset procs back to default
     scb_hw->scr = scb_orig;
     clocks_hw->sleep_en0 = sleep_en0_orig;
     clocks_hw->sleep_en1 = sleep_en1_orig;
@@ -296,7 +296,7 @@ void recover_from_sleep()
     clocks_hw->intf = intf_orig;
     // clocks_hw->ints = ints_orig;
 
-    //reset clocks
+    // reset clocks
     clocks_init();
     stdio_init_all();
     sleep_ms(DEFAULT_SLEEP_TIME_MS);
@@ -597,7 +597,7 @@ void setup()
         printf("[ERR] Error executing scd4x_get_serial_number(): %i\n", error);
         printf("[ERR] SCD41 not found!\n");
     }
-    else 
+    else
     {
         printf("[INF] Serial: 0x%04x%04x%04x\n", serial_0, serial_1, serial_2);
     }
@@ -647,7 +647,7 @@ void loop()
             sleep_ms(2000);
             buzzer.beep_boop(2, false);
         }
-        
+
 #ifdef DEBUG
         printf("[DBG] Trying to measure...\n");
 #endif
@@ -740,7 +740,7 @@ void loop()
                     firstmeasure = false;
                     int8_t min = MEASURE_INTERVAL_MINUTES / MEASURE_HIGH_NOTICE_SLEEP_FACTOR;
                     int8_t sec = 10;
-                    
+
                     if (min == 0)
                     {
                         min = 0;
@@ -750,7 +750,7 @@ void loop()
                     printf("[INF] First measurement. rtc_sleep start. (%dmin %dsec)\n", min, sec);
                     scd41_power_down();
                     stopped = true;
-                    rtc_sleep(min, sec); 
+                    rtc_sleep(min, sec);
                 }
                 else
                 {
@@ -799,6 +799,6 @@ int main(void)
     setup();
     uart_default_tx_wait_blocking();
     loop();
-    
+
     return 0;
 }
