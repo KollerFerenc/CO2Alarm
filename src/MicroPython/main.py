@@ -9,7 +9,7 @@
 
 # SCD41 range: 400–5000 ppm
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 ############################################################
 # Imports
@@ -102,9 +102,22 @@ def turn_off_led():
     ONBOARD_LED.value(0)
 
 
+def trace(value):
+    if DEBUG:
+        print("[TRC] {}".format(value))
+
+
 def debug(value):
     if DEBUG:
         print("[DBG] {}".format(value))
+
+
+def info(value):
+    print("[INF] {}".format(value))
+
+
+def error(value):
+    print("[ERR] {}".format(value))
 
 
 def battery_status():
@@ -119,34 +132,43 @@ def battery_status():
 
 
 def setup():
+    info("Setup start.")
     turn_off_led()
     turn_on_led()
     BUZZER.bequiet()
     time.sleep(1.0)
-    debug("scd41 init and start...")
+    info("SCD41 init and start...")
     breakout_scd41.init(I2C)
     time.sleep(1.0)
     breakout_scd41.stop()
     time.sleep(1.0)
     breakout_scd41.start()
-    debug("scd41 init and start done.")
+    info("SCD41 init and start done.")
     turn_off_led()
+    info("Setup finished.")
 
 
 def loop():
     firstmeasure = CHECK_FOR_FIRST_MEASURE
     measured = False
     stopped = False
+    loop_count = 0
+    successful_measurement_count = 0
     co2_high_count = 0
     while True:
+        debug(
+            "Loops: {}, successful measurements: {}".format(
+                loop_count, successful_measurement_count
+            )
+        )
         if stopped:
             breakout_scd41.start()
 
         chrg, v, p = battery_status()
-        debug("Charging: {}, voltage: {:.2f}V, percentage: {:.0f}%".format(chrg, v, p))
+        info("Charging: {}, voltage: {:.2f}V, percentage: {:.0f}%".format(chrg, v, p))
 
         if not chrg and p <= BATTERY_LOW_WARNING_PERCENT:
-            debug("Battery level low!")
+            info("Battery level low!")
             BUZZER.beep_boop(2, False)
             time.sleep(2.0)
             BUZZER.beep_boop(2, False)
@@ -158,33 +180,34 @@ def loop():
             blink_led(1)
             co2, temperature, humidity = breakout_scd41.measure()
             measured = True
-            debug(
-                "CO2: {}, Temp.: {:.2f}C, Humi.: {:.0f}%".format(
+            successful_measurement_count = successful_measurement_count + 1
+            info(
+                "CO2: {}, Temperature: {:.2f}C, Humidity: {:.0f}%".format(
                     co2, temperature, humidity
                 )
             )
 
             if co2 <= CO2_LEVEL_NORMAL_UPPER:
-                debug("co2 level good")
+                info("CO2 level good.")
             elif co2 <= CO2_LEVEL_HIGH_UPPER:
-                debug("co2 high")
+                info("CO2 high.")
                 co2_high = True
                 co2_high_count = co2_high_count + 1
                 BUZZER.beep_boop(5, False)
             else:
-                debug("co2 danger")
+                info("CO2 danger.")
                 co2_high = True
                 co2_high_count = co2_high_count + 1
                 BUZZER.beep_boop(30, True)
         else:
             measured = False
-            debug("scd41 not ready.")
+            info("SCD41 not ready.")
             blink_led(2)
 
         if measured:
             measured = False
 
-            debug("co2 high: {}, High count: {}".format(co2_high, co2_high_count))
+            debug("CO2 high: {}, High count: {}".format(co2_high, co2_high_count))
 
             if not co2_high and co2_high_count < 1:
                 co2_high_count = 0
@@ -195,12 +218,12 @@ def loop():
                     sleep_time = (
                         MEASURE_INTERVAL_MINUTES * 60
                     ) // MEASURE_HIGH_NOTICE_SLEEP_FACTOR
-                    debug("fm lightsleep start. ({}s)".format(sleep_time))
+                    info("fm lightsleep start. ({}s)".format(sleep_time))
                     breakout_scd41.stop()
                     stopped = True
                     machine.lightsleep(sleep_time * 1000)
                 else:
-                    debug("deepsleep start. ({}s)".format(sleep_time))
+                    info("deepsleep start. ({}s)".format(sleep_time))
                     breakout_scd41.stop()
                     stopped = True
                     machine.deepsleep(sleep_time * 1000)
@@ -209,13 +232,15 @@ def loop():
                 sleep_time = (
                     MEASURE_INTERVAL_MINUTES * 60
                 ) // MEASURE_HIGH_NOTICE_SLEEP_FACTOR
-                debug("lightsleep start. ({}s)".format(sleep_time))
+                info("lightsleep start. ({}s)".format(sleep_time))
                 breakout_scd41.stop()
                 stopped = True
                 machine.lightsleep(sleep_time * 1000)
 
         else:
             time.sleep(1.0)
+
+        loop_count = loop_count + 1
 
 
 def main():
