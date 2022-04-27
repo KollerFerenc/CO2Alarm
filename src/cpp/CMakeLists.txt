@@ -20,6 +20,7 @@ target_link_libraries(${OUTPUT_NAME}
     hardware_sleep
     hardware_clocks
     hardware_rosc
+    hardware_watchdog
 )
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")

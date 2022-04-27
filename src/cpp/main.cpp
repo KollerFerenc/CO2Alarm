@@ -18,6 +18,7 @@
 #include "hardware/clocks.h"
 #include "hardware/rosc.h"
 #include "hardware/structs/scb.h"
+#include "hardware/watchdog.h"
 
 using namespace pimoroni;
 
@@ -53,6 +54,7 @@ const float BATTERY_LOW_WARNING_PERCENT = 15.0f; // battery low warning percent
 
 const bool CHECK_FOR_FIRST_MEASURE = false; // treats first measurement as not trusted, ie sleep after first measurement as if high co2 happened
 const bool ALLOW_LED = true;
+const uint16_t RESET_AFTER_SUCCESSFUL_MEASUREMENTS = 500; // Reset Pico after n amount of successful measurements. 0 means no restart.
 
 // ############################################################
 // Constants
@@ -77,7 +79,7 @@ const uint32_t DEFAULT_SLEEP_TIME_MS = 5000;
 // ############################################################
 
 static const unsigned VERSION_MAJOR = 1;
-static const unsigned VERSION_MINOR = 2;
+static const unsigned VERSION_MINOR = 3;
 static const unsigned VERSION_REVISION = 0;
 
 // ############################################################
@@ -543,6 +545,14 @@ void scd41_self_test()
     }
 }
 
+void software_reset()
+{
+    watchdog_reboot(0, SRAM_END, 0);
+    while (true)
+    {
+    }
+}
+
 // Setup before main loop
 void setup()
 {
@@ -626,6 +636,19 @@ void loop()
 #ifdef DEBUG
         printf("[DBG] Loops: %d, successful measurements: %d\n", loop_count, successful_measurement_count);
 #endif
+
+        if (RESET_AFTER_SUCCESSFUL_MEASUREMENTS != 0 && successful_measurement_count >= RESET_AFTER_SUCCESSFUL_MEASUREMENTS)
+        {
+            printf("[INF] Restart point reached. Restarting...\n");
+
+            if (stopped)
+            {
+                scd41_reinit();
+            }
+
+            uart_default_tx_wait_blocking();
+            software_reset();
+        }
 
         if (stopped)
         {

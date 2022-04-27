@@ -9,11 +9,12 @@
 
 # SCD41 range: 400–5000 ppm
 
-__version__ = "1.0.1"
+__version__ = "1.3.0"
 
 ############################################################
 # Imports
 ############################################################
+from re import I
 import time
 import machine
 import os
@@ -62,6 +63,8 @@ DEBUG = False
 # treats first measurement as not trusted, ie sleep after first measurement as if high co2 happened
 CHECK_FOR_FIRST_MEASURE = False
 ALLOW_LED = False
+# Reset Pico after n amount of successful measurements. 0 means no restart.
+RESET_AFTER_SUCCESSFUL_MEASUREMENTS = 500
 
 ############################################################
 # Constants
@@ -161,6 +164,14 @@ def loop():
                 loop_count, successful_measurement_count
             )
         )
+
+        if (
+            RESET_AFTER_SUCCESSFUL_MEASUREMENTS != 0
+            and successful_measurement_count >= RESET_AFTER_SUCCESSFUL_MEASUREMENTS
+        ):
+            info("Restart point reached. Restarting...")
+            machine.reset()
+
         if stopped:
             breakout_scd41.start()
 
